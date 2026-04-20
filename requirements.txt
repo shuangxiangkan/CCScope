@@ -1,0 +1,5 @@
+multilspy @ git+https://github.com/microsoft/multilspy.git
+
+# Optional agent integrations
+langchain>=1.0.0,<2.0.0
+langgraph>=1.0.0,<2.0.0
