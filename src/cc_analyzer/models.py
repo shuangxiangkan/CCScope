@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
+from urllib.parse import unquote, urlparse
 
 from .constants import COMPLETION_KIND_NAMES, SYMBOL_KIND_NAMES
 
@@ -49,11 +50,17 @@ class Location(Serializable):
 
     @classmethod
     def from_lsp(cls, payload: dict[str, Any]) -> "Location":
+        absolute_path = payload.get("absolutePath")
+        uri = payload.get("uri")
+        if absolute_path is None and uri:
+            parsed = urlparse(uri)
+            if parsed.scheme == "file":
+                absolute_path = unquote(parsed.path)
         return cls(
-            absolute_path=payload["absolutePath"],
+            absolute_path=absolute_path or "",
             relative_path=payload.get("relativePath"),
             range=Range.from_lsp(payload["range"]),
-            uri=payload.get("uri"),
+            uri=uri,
         )
 
     @classmethod
