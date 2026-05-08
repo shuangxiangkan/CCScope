@@ -19,6 +19,7 @@ from .models import (
     Location,
     Position,
     PreflightResult,
+    ReferenceContext,
     SourceFileInfo,
     SymbolContext,
     SymbolInfo,
@@ -352,6 +353,78 @@ class AsyncCodebaseAnalyzer:
             locations = locations[:limit]
         return locations
 
+    def _find_enclosing_symbol(
+        self,
+        symbols: list[SymbolInfo],
+        line: int,
+    ) -> SymbolInfo | None:
+        """Find the innermost symbol whose range contains the given line."""
+        best: SymbolInfo | None = None
+        best_span = float("inf")
+        for symbol in symbols:
+            rng = symbol.range or (symbol.location.range if symbol.location else None)
+            if rng is None:
+                continue
+            if rng.start.line <= line <= rng.end.line:
+                span = rng.end.line - rng.start.line
+                if span < best_span:
+                    best = symbol
+                    best_span = span
+        return best
+
+    async def get_references_with_context(
+        self,
+        relative_path: str,
+        line: int,
+        column: int,
+        limit: int | None = None,
+        snippet_radius: int = 0,
+    ) -> list[ReferenceContext]:
+        """Like get_references(), but each result includes the enclosing symbol and source line."""
+        locations = await self.get_references(relative_path, line, column, limit=limit)
+
+        # Group locations by file to avoid redundant symbol queries
+        by_file: dict[str, list[Location]] = {}
+        for loc in locations:
+            key = loc.relative_path or loc.absolute_path
+            by_file.setdefault(key, []).append(loc)
+
+        # Pre-fetch document symbols for each referenced file (cached)
+        file_symbols: dict[str, list[SymbolInfo]] = {}
+        for file_key in by_file:
+            try:
+                file_symbols[file_key] = await self.get_document_symbols(file_key)
+            except Exception:
+                file_symbols[file_key] = []
+
+        results: list[ReferenceContext] = []
+        for loc in locations:
+            file_key = loc.relative_path or loc.absolute_path
+            ref_line = loc.range.start.line
+
+            # Find enclosing symbol
+            enclosing = self._find_enclosing_symbol(file_symbols.get(file_key, []), ref_line)
+
+            # Get the source line(s) around the reference
+            snippet_line = ""
+            try:
+                start = max(1, ref_line - snippet_radius)
+                end = ref_line + snippet_radius
+                snippet = self.get_snippet(file_key, start, end)
+                snippet_line = snippet.numbered_text
+            except Exception:
+                pass
+
+            results.append(
+                ReferenceContext(
+                    location=loc,
+                    enclosing_symbol=enclosing,
+                    snippet_line=snippet_line,
+                )
+            )
+
+        return results
+
     async def get_hover(self, relative_path: str, line: int, column: int) -> HoverInfo | None:
         self._ensure_started()
         position = Position(line=line, column=column).to_lsp()
@@ -557,6 +630,21 @@ class SyncCodebaseAnalyzer:
     ) -> list[Location]:
         self.start()
         return self._run(self._async_analyzer.get_references(relative_path, line, column, limit=limit))
+
+    def get_references_with_context(
+        self,
+        relative_path: str,
+        line: int,
+        column: int,
+        limit: int | None = None,
+        snippet_radius: int = 0,
+    ) -> list[ReferenceContext]:
+        self.start()
+        return self._run(
+            self._async_analyzer.get_references_with_context(
+                relative_path, line, column, limit=limit, snippet_radius=snippet_radius,
+            )
+        )
 
     def get_hover(self, relative_path: str, line: int, column: int) -> HoverInfo | None:
         self.start()

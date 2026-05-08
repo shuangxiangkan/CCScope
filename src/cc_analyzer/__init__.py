@@ -16,6 +16,7 @@ from .models import (
     Position,
     PreflightResult,
     Range,
+    ReferenceContext,
     SourceFileInfo,
     SymbolContext,
     SymbolInfo,
@@ -39,6 +40,7 @@ __all__ = [
     "Position",
     "PreflightResult",
     "Range",
+    "ReferenceContext",
     "SourceFileInfo",
     "SymbolContext",
     "SymbolInfo",
@@ -46,3 +48,4 @@ __all__ = [
     "WorkspaceFileIndex",
     "WorkspaceIndex",
 ]
+

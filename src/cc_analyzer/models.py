@@ -181,6 +181,22 @@ class SymbolContext(Serializable):
 
 
 @dataclass(slots=True)
+class ReferenceContext(Serializable):
+    """A reference location enriched with semantic context."""
+    location: Location
+    enclosing_symbol: SymbolInfo | None = None
+    snippet_line: str = ""
+
+    @property
+    def line(self) -> int:
+        return self.location.range.start.line
+
+    @property
+    def relative_path(self) -> str | None:
+        return self.location.relative_path
+
+
+@dataclass(slots=True)
 class WorkspaceFileIndex(Serializable):
     file: SourceFileInfo
     symbols: list[SymbolInfo] = field(default_factory=list)

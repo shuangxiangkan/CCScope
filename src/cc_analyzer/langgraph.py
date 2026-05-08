@@ -68,6 +68,23 @@ class LangGraphToolkit:
         ]
         return {"count": len(items), "items": items}
 
+    def get_references_with_context(
+        self,
+        relative_path: str,
+        line: int,
+        column: int,
+        limit: int = 50,
+        snippet_radius: int = 0,
+    ) -> dict[str, Any]:
+        """Find references with semantic context: enclosing symbol and source line for each reference."""
+        items = [
+            item.to_dict()
+            for item in self.analyzer.get_references_with_context(
+                relative_path, line, column, limit=limit, snippet_radius=snippet_radius,
+            )
+        ]
+        return {"count": len(items), "items": items}
+
     def get_hover(self, relative_path: str, line: int, column: int) -> dict[str, Any]:
         """Return hover information at the given location."""
         hover = self.analyzer.get_hover(relative_path, line, column)
@@ -129,6 +146,7 @@ class LangGraphToolkit:
             self.find_symbol,
             self.get_definition,
             self.get_references,
+            self.get_references_with_context,
             self.get_hover,
             self.get_completions,
             self.inspect_symbol,
