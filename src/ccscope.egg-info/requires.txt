@@ -1,5 +1,0 @@
-multilspy @ git+https://github.com/microsoft/multilspy.git
-
-[agents]
-langchain<2.0.0,>=1.0.0
-langgraph<2.0.0,>=1.0.0
