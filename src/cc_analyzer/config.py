@@ -38,7 +38,7 @@ class AnalyzerConfig:
         if env_path:
             return str(Path(env_path).expanduser())
 
-        return shutil.which("clangd")
+        return shutil.which("clangd-18") or shutil.which("clangd")
 
     def resolve_compile_commands_path(self) -> Path | None:
         if self.compile_commands_path is not None:

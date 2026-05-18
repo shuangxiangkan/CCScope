@@ -1,4 +1,5 @@
 import unittest
+from unittest.mock import patch
 
 from helpers import CJSON_ROOT
 
@@ -21,6 +22,17 @@ class ConfigTests(unittest.TestCase):
     def test_clangd_path_is_optional(self) -> None:
         config = AnalyzerConfig(project_root=CJSON_ROOT, clangd_path=None)
         self.assertIsNotNone(config.project_root)
+
+    def test_clangd_18_is_preferred_over_plain_clangd(self) -> None:
+        def fake_which(name: str) -> str | None:
+            return {
+                "clangd-18": "/usr/bin/clangd-18",
+                "clangd": "/usr/bin/clangd",
+            }.get(name)
+
+        config = AnalyzerConfig(project_root=CJSON_ROOT, clangd_path=None)
+        with patch("cc_analyzer.config.shutil.which", side_effect=fake_which):
+            self.assertEqual(config.resolve_clangd_path(), "/usr/bin/clangd-18")
 
 
 class ModelTests(unittest.TestCase):
